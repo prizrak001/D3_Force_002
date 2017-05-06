@@ -17,8 +17,6 @@
         var w = window.innerWidth;
         var h = window.innerHeight;
 
-        var focus_node = null, highlight_node = null;
-
         var text_center = false;
         var outline = false;
 
@@ -28,9 +26,6 @@
         var color = d3.scale.linear()
           .domain([min_score, (min_score + max_score) / 2, max_score])
           .range(["lime", "yellow", "red"]);
-
-        var highlight_color = "blue";
-        var highlight_trans = 0.1;
 
         var size = d3.scale.pow().exponent(1)
           .domain([1, 100])
@@ -59,23 +54,6 @@
 
         d3.json("graph.json", function (error, graph) {
 
-            var linkedByIndex = {};
-            graph.links.forEach(function (d) {
-                linkedByIndex[d.source + "," + d.target] = true;
-            });
-
-            function isConnected(a, b) {
-                return linkedByIndex[a.index + "," + b.index] || linkedByIndex[b.index + "," + a.index] || a.index == b.index;
-            }
-
-            function hasConnections(a) {
-                for (var property in linkedByIndex) {
-                    s = property.split(",");
-                    if ((s[0] == a.index || s[1] == a.index) && linkedByIndex[property]) return true;
-                }
-                return false;
-            }
-
             force
               .nodes(graph.nodes)
               .links(graph.links)
@@ -98,19 +76,6 @@
               .attr("class", "node")
 
               .call(force.drag)
-
-
-            node.on("dblclick.zoom", function (d) {
-                d3.event.stopPropagation();
-                var dcx = (window.innerWidth / 2 - d.x * zoom.scale());
-                var dcy = (window.innerHeight / 2 - d.y * zoom.scale());
-                zoom.translate([dcx, dcy]);
-                g.attr("transform", "translate(" + dcx + "," + dcy + ")scale(" + zoom.scale() + ")");
-
-
-            });
-
-
 
 
             var tocolor = "fill";
@@ -151,84 +116,9 @@
                 text.attr("dx", function (d) { return (size(d.size) || nominal_base_node_size); })
                 .text(function (d) { return '\u2002' + d.id; });
 
-            node.on("mouseover", function (d) {
-                set_highlight(d);
-            })
-          .on("mousedown", function (d) {
-              d3.event.stopPropagation();
-              focus_node = d;
-              set_focus(d)
-              if (highlight_node === null) set_highlight(d)
-
-          }).on("mouseout", function (d) {
-              exit_highlight();
-
-          });
-
-            d3.select(window).on("mouseup",
-            function () {
-                if (focus_node !== null) {
-                    focus_node = null;
-                    if (highlight_trans < 1) {
-
-                        circle.style("opacity", 1);
-                        text.style("opacity", 1);
-                        link.style("opacity", 1);
-                    }
-                }
-
-                if (highlight_node === null) exit_highlight();
+            node.on("mousedown", function (d) {
+                d3.event.stopPropagation();
             });
-
-            function exit_highlight() {
-                highlight_node = null;
-                if (focus_node === null) {
-                    svg.style("cursor", "move");
-                    if (highlight_color != "white") {
-                        circle.style(towhite, "white");
-                        text.style("font-weight", "normal");
-                        link.style("stroke", function (o) { return (isNumber(o.score) && o.score >= 0) ? color(o.score) : default_link_color });
-                    }
-
-                }
-            }
-
-            function set_focus(d) {
-                if (highlight_trans < 1) {
-                    circle.style("opacity", function (o) {
-                        return isConnected(d, o) ? 1 : highlight_trans;
-                    });
-
-                    text.style("opacity", function (o) {
-                        return isConnected(d, o) ? 1 : highlight_trans;
-                    });
-
-                    link.style("opacity", function (o) {
-                        return o.source.index == d.index || o.target.index == d.index ? 1 : highlight_trans;
-                    });
-                }
-            }
-
-
-            function set_highlight(d) {
-                svg.style("cursor", "pointer");
-                if (focus_node !== null) d = focus_node;
-                highlight_node = d;
-
-                if (highlight_color != "white") {
-                    circle.style(towhite, function (o) {
-                        return isConnected(d, o) ? highlight_color : "white";
-                    });
-                    text.style("font-weight", function (o) {
-                        return isConnected(d, o) ? "bold" : "normal";
-                    });
-                    link.style("stroke", function (o) {
-                        return o.source.index == d.index || o.target.index == d.index ? highlight_color : ((isNumber(o.score) && o.score >= 0) ? color(o.score) : default_link_color);
-
-                    });
-                }
-            }
-
 
             zoom.on("zoom", function () {
 
